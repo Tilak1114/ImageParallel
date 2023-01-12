@@ -36,10 +36,6 @@ void findMedianOfKernel(
 
     vector<int> kernel;
 
-    cout << "Thread " << threadId + 1 << " running from " << rowStartIdx << " to " << rowEndIdx << endl;
-
-    cout << addressof(result) << endl;
-
     int iter = 0;
     for (int i = rowStartIdx; i < rowEndIdx; i++) {
         for (int j = 0; j < image.cols; j++) {
@@ -57,8 +53,6 @@ void findMedianOfKernel(
             result.push_back(median);
         }
     }
-
-    cout << "Thread " << threadId + 1 << " finished with " << result.size() << " results" << endl;
 }
 
 int main() {
@@ -88,7 +82,6 @@ int main() {
          << std::endl << endl;
 
     auto num_cores = thread::hardware_concurrency();
-    num_cores = 2;
 
     cout << "Number of rows: " << image.rows << endl;
 
@@ -146,7 +139,25 @@ int main() {
          << std::endl;
 //        cout << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
 
+    vector<int> multiRes;
+
+    for (vector<int> &tr: thread_i_res) {
+        multiRes.insert(multiRes.end(), tr.begin(), tr.end());
+    }
+
+    sort(multiRes.begin(), multiRes.end());
     sort(singleRes.begin(), singleRes.end());
+
+    bool isSame = true;
+
+    for (int i = 0; i < singleRes.size(); i++) {
+        if(singleRes[i]!=multiRes[i]){
+            isSame = false;
+            break;
+        }
+    }
+
+    cout<<isSame<<endl;
 
     return 0;
     end = std::chrono::steady_clock::now();
