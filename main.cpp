@@ -56,14 +56,10 @@ void findMedianOfKernel(
 }
 
 int main() {
-    // Read Image
+
     String fileName = "/Users/tilaksharma/CLionProjects/ImageParallel/image.png";
     Mat image = imread(fileName, IMREAD_GRAYSCALE);
     cout << "Image size: " << image.rows << "x" << image.cols << endl;
-//    imshow("window", image);
-//    waitKey(0);
-
-    vector<int> medRes;
 
     // Serially run a median calculator for a kernel size of 3x3 and check elapsed time
     chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -81,67 +77,70 @@ int main() {
          << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " µs"
          << std::endl << endl;
 
-    auto num_cores = thread::hardware_concurrency();
+    auto numCores = thread::hardware_concurrency();
 
     cout << "Number of rows: " << image.rows << endl;
 
-    cout << "Number of cores: " << num_cores << endl;
+    cout << "Number of cores: " << numCores << endl;
 
-    //Num of cores and exp are the same in the case
-    vector<vector<int>> thread_i_res(num_cores);
+    int numExp = 8;
 
-    begin = std::chrono::steady_clock::now();
+    vector<vector<vector<int>>> experimentResults;
 
-    int numThreads = num_cores;
-    int task_split = image.rows / numThreads;
+    for (int i = 0; i < numExp; i++) {
+        begin = std::chrono::steady_clock::now();
 
-    vector<thread> threads;
+        int numThreads = i + 1;
+        int task_split = image.rows / numThreads;
 
-    int upper;
-    int lower;
+        vector<vector<int>> threadIRes(numThreads);
+        experimentResults.push_back(threadIRes);
 
-    for (int x = 0; x < numThreads; x++) {
-        if (x == numThreads - 1) {
-            lower = x * task_split;
-            upper = image.rows;
-            threads.emplace_back(
-                    findMedianOfKernel,
-                    ref(image),
-                    ref(thread_i_res[x]),
-                    x,
-                    lower,
-                    upper
-            );
-        } else {
-            lower = x * task_split;
-            upper = (x + 1) * task_split;
-            threads.emplace_back(
-                    findMedianOfKernel,
-                    ref(image),
-                    ref(thread_i_res[x]),
-                    x,
-                    lower,
-                    upper
-            );
+        vector<thread> threads;
+
+        int upper;
+        int lower;
+
+        for (int x = 0; x < numThreads; x++) {
+            if (x == numThreads - 1) {
+                lower = x * task_split;
+                upper = image.rows;
+                threads.emplace_back(
+                        findMedianOfKernel,
+                        ref(image),
+                        ref(experimentResults[i][x]),
+                        x,
+                        lower,
+                        upper
+                );
+            } else {
+                lower = x * task_split;
+                upper = (x + 1) * task_split;
+                threads.emplace_back(
+                        findMedianOfKernel,
+                        ref(image),
+                        ref(experimentResults[i][x]),
+                        x,
+                        lower,
+                        upper
+                );
+            }
         }
-        cout << lower << "-" << upper << endl;
-    }
 
-    for (thread &t: threads) {
-        if (t.joinable()) {
-            t.join();
+        for (thread &t: threads) {
+            if (t.joinable()) {
+                t.join();
+            }
         }
-    }
 
-    end = std::chrono::steady_clock::now();
-    cout << "Time taken using " << numThreads << " threads = "
-         << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " µs"
-         << std::endl;
+        end = std::chrono::steady_clock::now();
+        cout << "Time taken using " << numThreads << " threads = "
+             << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " µs"
+             << std::endl;
+    }
 //        cout << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
 
-    vector<int> multiRes;
-
-    for (vector<int> &tr: thread_i_res) {
+    for (vector<int> &tr: experimentResults[0]) {
         multiRes.insert(multiRes.end(), tr.begin(), tr.end());
     }
 
@@ -151,22 +150,14 @@ int main() {
     bool isSame = true;
 
     for (int i = 0; i < singleRes.size(); i++) {
-        if(singleRes[i]!=multiRes[i]){
+        if (singleRes[i] != multiRes[i]) {
             isSame = false;
             break;
         }
     }
 
-    cout<<isSame<<endl;
+    cout << isSame << endl;
 
     return 0;
-    end = std::chrono::steady_clock::now();
-    cout << "Time taken without multi threading = "
-         << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " µs"
-         << std::endl;
-
-    // Delegate work to multiple threads and check elapsed time
-
-    begin = std::chrono::steady_clock::now();
 
 }
